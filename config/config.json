@@ -1,0 +1,23 @@
+{
+  "status": {
+    "new" : {
+      "warehouse": "новый заказ",
+      "queue": "передан на сборку",
+      "alertTimeout": "1200"
+    },
+    "assemblyInProgress" : {
+      "warehouse": "собирается",
+      "queue": "собирается",
+      "alertTimeout": "1200"
+    },
+    "readyForPickup": {
+      "warehouse": "готов",
+      "queue": "готов"
+    },
+    "handedOver": {
+      "warehouse": "выдан",
+      "queue": "выдан",
+      "hideTimeout": 300
+    }
+  }
+}

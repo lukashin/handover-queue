@@ -1,0 +1,30 @@
+{
+  "uuid":"dbc03d32-a688-481c-87af-1d98176c8987",
+  "name":"Основной склад",
+  "queue": [
+    {
+      "uuid":"54af73f9-8db7-4118-8b32-dc15ecc055d2",
+      "caption":"001",
+      "status":"new",
+      "updated":"1517853729"
+    },
+    {
+      "uuid":"8c799bca-9b8b-4c5b-9499-021cb636409a",
+      "caption":"002",
+      "status":"assemblyInProgress",
+      "updated":"1517853729"
+    },
+    {
+      "uuid":"035eeab1-a913-48d8-9fe2-ce1d7ea7cfe3",
+      "caption":"003",
+      "status":"readyForPickup",
+      "updated":"1517853729"
+    },
+    {
+      "uuid":"694c1abe-12c1-426b-b1b3-670c0d689f50",
+      "caption":"004",
+      "status":"handedOver",
+      "updated":"1517853729"
+    }
+  ]
+}
