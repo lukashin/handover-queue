@@ -1,4 +1,8 @@
 {
+  "warehouse": {
+    "uuid":"dbc03d32-a688-481c-87af-1d98176c8987",
+    "name":"Основной склад",
+  },
   "status": {
     "new" : {
       "warehouse": "новый заказ",

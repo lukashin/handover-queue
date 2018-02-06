@@ -1,0 +1,15 @@
+{
+  "name": "lukashin/handover_queue",
+  "description": "handover queue micro app",
+  "minimum-stability": "dev",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Aleksei Lukashin",
+      "email": "aleksei@lukashin.pro"
+    }
+  ],
+  "require": {
+    "slim/slim": "3.9.2"
+  }
+}
