@@ -124,6 +124,7 @@ $app->post(
         if (!$itemUuid && isset($parsedRequest['itemUuid'])) {
             $itemUuid = trim($parsedRequest['itemUuid']);
         }
+
         if (!$itemUuid) {
             $errors[] = 'parameter itemUuid missing';
         } elseif (!\Ramsey\Uuid\Uuid::isValid($itemUuid)) {
@@ -142,6 +143,16 @@ $app->post(
 
         if (!$caption && $status == 'new') {
             $errors[] = 'parameter caption non-null value expected for status=new';
+        }
+
+        $warehouse = [];
+        foreach ($config['warehouses'] as $w) {
+            if ($w['uuid'] == $warehouseUuid) {
+                $warehouse = $w;
+            }
+        }
+        if (!$warehouse) {
+            $errors[] = 'warehouse with provided UUID not found';
         }
 
         if ($errors) {
@@ -168,10 +179,11 @@ $app->post(
                 return $response->withRedirect($referer);
             }
 
-            return $response->withStatus(201);
+            return $response->withStatus(204);
         }
 
-        if (file_exists($itemDataPath)) {
+        $existingFileFound = file_exists($itemDataPath);
+        if ($existingFileFound) {
             $data = json_decode(file_get_contents($itemDataPath), JSON_OBJECT_AS_ARRAY|JSON_UNESCAPED_UNICODE);
         } else {
             $data = [];
@@ -203,7 +215,7 @@ $app->post(
                 return $response->withRedirect($referer);
             }
 
-            return $response->withStatus(201);
+            return $response->withJson($data,$existingFileFound ? 200 : 201, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
         }
 
         return $response->withStatus(500);
