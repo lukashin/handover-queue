@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{ warehouse.name }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <style>
+
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Заголовок</th>
+                <th>Статус</th>
+                <th>Статус</th>
+                <th>UUID</th>
+                <th>Обновлен</th>
+                <th>Собирается</th>
+                <th>Готов</th>
+                <th>Выдан</th>
+                <th>Удалить</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in queue %}
+            <tr>
+                <td class="itemCaption">{{ item.caption }}</td>
+                <td class="itemStatus">{{ item.translated }}</td>
+                <td>{{ item.status }}</td>
+                <td>{{ item.uuid }}</td>
+                <td>{{ item.updated ? item.updated|date('d.m.Y H:i:s') : '' }}</td>
+                <td>
+                    <form method="post" action="{{ path_for('setStatus', {'warehouseUuid':warehouseUuid, 'status':'assemblyInProgress', 'itemUuid':item.uuid}) }}">
+                        <button type="submit" class="btn btn-xs btn-primary">assemblyInProgress</button>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" action="{{ path_for('setStatus', {'warehouseUuid':warehouseUuid, 'status':'readyForPickup', 'itemUuid':item.uuid}) }}">
+                        <button type="submit" class="btn btn-xs btn-primary">readyForPickup</button>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" action="{{ path_for('setStatus', {'warehouseUuid':warehouseUuid, 'status':'handedOver', 'itemUuid':item.uuid}) }}">
+                        <button type="submit" class="btn btn-xs btn-primary">handedOver</button>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" action="{{ path_for('setStatus', {'warehouseUuid':warehouseUuid, 'status':'reset', 'itemUuid':item.uuid}) }}">
+                        <input type="hidden" name="redirect" value="1">
+                        <button type="submit" class="btn btn-xs btn-danger">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+<hr>
+<div class="row">
+    <div class="col-4">
+        <form method="post" action="{{ path_for('setStatus', {'warehouseUuid':warehouseUuid, 'status':'new', 'itemUuid':newUuid}) }}">
+            <div class="form-group">
+                <label for="captionInput">Номер заказа/чека</label>
+                <input type="text" class="form-control" name="caption" id="captionInput" aria-describedby="captionHelp" placeholder="ЧЕК-007" required>
+                <small id="captionHelp" class="form-text text-muted">Отображается на экране "как есть"</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Создать в статусе "Передан на сборку"</button>
+        </form>
+    </div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+</html>
+
