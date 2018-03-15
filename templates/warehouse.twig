@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>{{ warehouse.name }} | очередь</title>
+    <title>{{ warehouse.name }} | склад</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <style>
         html,body{
@@ -15,7 +15,7 @@
             padding-top: 0.2em;
         }
         td.itemCaption{
-            width: 30%;
+            width: 25%;
             letter-spacing: 0.15em;
         }
         .itemCaptionSmall{
@@ -27,11 +27,12 @@
 
         tr.itemAlert td{
             transition: background-color 0.4s ease;
-            background-color: #145428 !important;
+            background-color: #a72a0f !important;
         }
+
         tr.itemAlert.alertOn td{
             transition: background-color 0.4s ease;
-            background-color: #1a7a32 !important;
+            background-color: #611a1d !important;
         }
         tr.green td{
             background-color: #145428;
@@ -43,11 +44,14 @@
 </head>
 <body>
 
-<div class="container-fluid" id="container-main" data-src="{{ path_for('queue', {'uuid':warehouse.uuid, 'view':'reduced'}) }}">
+<div class="container-fluid" id="container-main" data-src="{{ path_for('warehouse', {'uuid':warehouse.uuid, 'view':'reduced'}) }}">
 {% endif %}
     <div class="hidden">
-        <form method="post" action="{{ path_for('queue', {'uuid':warehouse.uuid, 'view':'reduced'}) }}" id="formReadyForPickup">
-            {% for item in mainQueue if item.status == 'readyForPickup' %}
+        <form method="post" action="{{ path_for('warehouse', {'uuid':warehouse.uuid, 'view':'reduced'}) }}" id="formReadyForPickup">
+            {% for item in mainQueue if (item.alert or item.stuck) %}
+                <input type="hidden" name="readyForPickup[{{ item.uuid }}]" value="{{ item.uuid }}">
+            {% endfor %}
+            {% for item in extraQueue if (item.alert or item.stuck) %}
                 <input type="hidden" name="readyForPickup[{{ item.uuid }}]" value="{{ item.uuid }}">
             {% endfor %}
         </form>
@@ -55,19 +59,29 @@
     <div class="row">
         <div class="col-8">
             <table class="table table-striped table-dark">
-                {% if config.headers.queue.caption or config.headers.queue.status or config.headers.queue.tail %}
                 <thead>
-                <tr>
-                <th class="text-right">{{ config.headers.queue.caption }}</th>
-                <th>{{ config.headers.queue.status }}</th>
-                </tr>
+                    <tr>
+                        <th>Документ</th>
+                        <th>Статус</th>
+                        <th class="text-right">Минуты</th>
+                    </tr>
                 </thead>
-                {% endif %}
                 <tbody>
                 {% for item in mainQueue %}
-                    <tr class="{{ item.status == 'readyForPickup' ? 'green' : '' }} {{ item.alert ? 'itemAlert' : '' }}">
+                    {% if item.alert %}
+                        <tr class="bg-danger {{ item.alert ? 'itemAlert' : '' }}">
+                    {% elseif item.stuck %}
+                        <tr class="bg-danger">
+                    {% elseif item.status == 'new' %}
+                        <tr class="bg-primary">
+                    {% elseif item.status == 'readyForPickup' %}
+                        <tr class="green">
+                    {% else %}
+                    <tr class="">
+                    {% endif %}
                         <td class="text-right itemCaption">{{ item.caption }}</td>
                         <td class="itemStatus">{{ item.translated }}</td>
+                        <td class="text-right">{{ item.minutesPassed }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -75,18 +89,24 @@
         </div>
         <div class="col-1"></div>
         {% if extraQueue %}
-        <div class="col-3">
-            <table class="table table-dark ">
-                {% if config.headers.queue.tail %}
-                    <thead>
-                    <tr>
-                        <th class="text-right">{{ config.headers.queue.tail }}</th>
-                    </tr>
-                    </thead>
-                {% endif %}
-                <tbody class="extraQueue">
+        <div class="col-3 extraQueue">
+            <table class="table  table-dark">
+                {#<thead>#}
+                {#<tr>#}
+                    {#<th class="text-right">Новые заказы</th>#}
+                {#</tr>#}
+                {#</thead>#}
+                <tbody>
                 {% for item in extraQueue %}
-                    <tr class="{{ item.status == 'readyForPickup' ? 'bg-success' : '' }}">
+                    {% if item.alert %}
+                    <tr class="bg-danger {{ item.alert ? 'itemAlert' : '' }}">
+                    {% elseif item.stuck %}
+                        <tr class="bg-danger">
+                    {% elseif item.status == 'new' %}
+                        <tr class="bg-primary">
+                    {% else %}
+                        <tr class="">
+                    {% endif %}
                         <td class="text-right itemCaption">{{ item.caption }}</td>
                     </tr>
                 {% endfor %}
@@ -95,7 +115,6 @@
         </div>
         {% endif %}
     </div>
-
 {% if view != 'reduced' %}
 </div>
 
@@ -113,7 +132,7 @@
             var jqxhr = $.post($mainContainer.data('src'), $form.serialize(), function(response) {
                 if (response !== lastResponse) {
                     $mainContainer.html(response);
-                    if (lastResponse && ($('.itemAlert').length > 0)) {
+                    if (lastResponse && ($('.itemAlert').length > 0))  {
                         $('#successSound').get(0).play();
                     }
                     lastResponse = response;
@@ -137,8 +156,6 @@
         }, 800);
 
     });
-
-
 </script>
 </body>
 </html>

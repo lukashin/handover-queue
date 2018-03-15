@@ -2,12 +2,51 @@
   "warehouses": [
     {
       "uuid":"dbc03d32-a688-481c-87af-1d98176c8987",
-      "name":"Основной склад"
+      "name":"Основной склад",
+      "mainQueueSize": 7,
+      "maxReadyForPickup": 3
+    },
+    {
+      "uuid":"efb28990-56f6-11e2-a726-00a0d1e84acd",
+      "name":"Склад N2",
+      "mainQueueSize": 7,
+      "maxReadyForPickup": 3
+    },
+    {
+      "uuid":"2228d351-088d-11e3-bdf2-00a0d1e84acd",
+      "name":"Склад Санкт-Петербург",
+      "mainQueueSize": 7,
+      "maxReadyForPickup": 3
+    },
+    {
+      "uuid":"92637686-f1ae-11e5-9cea-00a0d1e84acd",
+      "name":"Склад Хранения",
+      "mainQueueSize": 7,
+      "maxReadyForPickup": 3
+    },
+    {
+      "uuid":"96110e2b-b88e-11e6-b4e5-00a0d1e84acd",
+      "name":"Склад Самара",
+      "mainQueueSize": 7,
+      "maxReadyForPickup": 3
+    },
+    {
+      "uuid":"39ecdff7-56f8-11e2-a726-00a0d1e84acd",
+      "name":"Склад N3",
+      "mainQueueSize": 7,
+      "maxReadyForPickup": 3
     }
   ],
+  "headers": {
+    "queue": {
+      "caption": "Документ",
+      "status": "Статус",
+      "tail": "Ожидание"
+    }
+  },
   "status": {
     "new" : {
-      "warehouse": "Новый заказ",
+      "warehouse": "Новый",
       "queue": "Передан на сборку",
       "alertTimeout": "1200"
     },

@@ -1,6 +1,7 @@
 {
-  "uuid":"035eeab1-a913-48d8-9fe2-ce1d7ea7cfe3",
-  "caption":"УПС-003",
-  "status":"readyForPickup",
-  "updated":"2018-02-05 19:30:00"
+    "uuid": "035eeab1-a913-48d8-9fe2-ce1d7ea7cfe3",
+    "caption": "УПС-003",
+    "status": "assemblyInProgress",
+    "updated": "2018-02-25 21:58:21",
+    "created": "2018-02-25 21:50:03"
 }

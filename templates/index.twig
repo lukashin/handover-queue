@@ -19,7 +19,7 @@
         <tr>
             <td>{{ warehouse.name }}</td>
             <td><a href="{{ path_for('queue', {'uuid':warehouse.uuid}) }}">Очередь</a></td>
-            <td><a href="{{ path_for('queue', {'uuid':warehouse.uuid}) }}">Склад</a></td>
+            <td><a href="{{ path_for('warehouse', {'uuid':warehouse.uuid}) }}">Склад</a></td>
             <td><a href="{{ path_for('manage', {'uuid':warehouse.uuid}) }}">Администрирование</a></td>
         </tr>
         {% endfor %}

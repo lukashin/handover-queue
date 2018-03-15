@@ -29,14 +29,12 @@ $container['view'] = function ($container) {
     return $view;
 };
 
-$app->get('/warehouse/{uuid}', function (Request $request, Response $response, array $args) {
-    $warehouseId = $args['uuid'];
 
-    return $response->withJson(json_decode(file_get_contents('../data/'.$warehouseId.'.json')));
-})->setName('warehouse');
 
-$app->get('/queue/{uuid}', function (Request $request, Response $response, array $args) {
+$app->any('/queue/{uuid}[/{view}]', function (Request $request, Response $response, array $args) {
     $warehouseUuid = $args['uuid'];
+    $view = $args['view'] ?? 'full';
+    $parsedRequest = $request->getParsedBody();
 
     $statusWeight = [
         'readyForPickup' => 10,
@@ -47,6 +45,12 @@ $app->get('/queue/{uuid}', function (Request $request, Response $response, array
 
     $contents = file_get_contents('../config/config.json');
     $config = \json_decode($contents, JSON_OBJECT_AS_ARRAY);
+
+    if (isset($parsedRequest['readyForPickup']) && $parsedRequest['readyForPickup']) {
+        $previousReadyUuids = $parsedRequest['readyForPickup'];
+    } else {
+        $previousReadyUuids = [];
+    }
 
     $data = [];
     $warehouseDataPath = sprintf('%s/%s', $this->get('settings')['dataDirPath'], $warehouseUuid);
@@ -59,9 +63,15 @@ $app->get('/queue/{uuid}', function (Request $request, Response $response, array
         if ($itemData && isset($itemData['status']) && isset($itemData['status'])) {
             // check datetime
             $status = $itemData['status'];
-            $itemData['statusWeight'] = $statusWeight[$itemData['status']];
+            $itemData['statusWeight'] = $statusWeight[$status];
             $itemData['updated'] = new \DateTime($itemData['updated']);
             $itemData['translated'] = $config['status'][$status]['queue'];
+
+            if ($status === 'readyForPickup') {
+                $itemData['alert'] = !in_array($itemData['uuid'], $previousReadyUuids);
+            } else {
+                $itemData['alert'] = false;
+            }
 
             $data[] = $itemData;
         }
@@ -90,13 +100,140 @@ $app->get('/queue/{uuid}', function (Request $request, Response $response, array
             $warehouse = $w;
         }
     }
+    $maxReadyForPickup = 3;
+    if (isset($warehouse['maxReadyForPickup']) && (int) $warehouse['maxReadyForPickup']) {
+        $maxReadyForPickup = (int) $warehouse['maxReadyForPickup'];
+    }
+
+    $data = array_values($data);
+
+    // when there is more, than allowed orders ready for pickup - "hide" rest, let people wait in queue
+    foreach ($data as $idx => $item) {
+        if ($idx >= $maxReadyForPickup && ('readyForPickup' == $item['readyForPickup'])) {
+            $status = 'assemblyInProgress';
+            $data[$idx]['status'] = $status;
+            $data[$idx]['alert'] = false;
+            $data[$idx]['translated'] = $config['status'][$status]['queue'];
+        }
+    }
+
+    $mainQueueSize = $warehouse['mainQueueSize'] ?? 7;
+    $mainQueue = array_slice($data, 0, $mainQueueSize);
+    $extraQueue = array_slice($data, $mainQueueSize);
 
     return $this->view->render($response, 'queue.twig', [
         'queue' => $data,
         'config' => $config,
         'warehouse' => $warehouse,
+        'view' => $view,
+        'mainQueue' => $mainQueue,
+        'extraQueue' => $extraQueue,
     ]);
 })->setName('queue');
+
+
+
+$app->any('/warehouse/{uuid}[/{view}]', function (Request $request, Response $response, array $args) {
+    $warehouseUuid = $args['uuid'];
+    $view = $args['view'] ?? 'full';
+    $parsedRequest = $request->getParsedBody();
+
+    $ignoreStatuses = ['handedOver'];
+    $statusWeight = [
+        'readyForPickup' => 10,
+        'assemblyInProgress' => 20,
+        'new' => 30,
+        'handedOver' => 40,
+    ];
+
+    $contents = file_get_contents('../config/config.json');
+    $config = \json_decode($contents, JSON_OBJECT_AS_ARRAY);
+
+    $warehouse = [];
+    foreach ($config['warehouses'] as $w) {
+        if ($w['uuid'] == $warehouseUuid) {
+            $warehouse = $w;
+        }
+    }
+
+    if (isset($parsedRequest['readyForPickup']) && $parsedRequest['readyForPickup']) {
+        $previousReadyUuids = $parsedRequest['readyForPickup'];
+    } else {
+        $previousReadyUuids = [];
+    }
+
+    $data = [];
+    $warehouseDataPath = sprintf('%s/%s', $this->get('settings')['dataDirPath'], $warehouseUuid);
+    $itemFiles = scandir($warehouseDataPath);
+
+    $timeoutMinutes = 20;
+    foreach ($itemFiles as $file) {
+        if (in_array($file, ['.', '..'])) continue;
+
+        $itemFilePath = sprintf('%s/%s', $warehouseDataPath, $file);
+        $itemData = json_decode(file_get_contents($itemFilePath), JSON_OBJECT_AS_ARRAY);
+        if ($itemData && isset($itemData['status']) && isset($itemData['status'])) {
+            // check datetime
+            $status = $itemData['status'];
+
+            $itemData['alert'] = false;
+            $itemData['stuck'] = false;
+
+            if (in_array($status, $ignoreStatuses)) {
+                continue;
+            }
+
+            $itemData['statusWeight'] = $statusWeight[$itemData['status']];
+            $itemData['updated'] = new \DateTime($itemData['updated']);
+            $itemData['created'] = new \DateTime($itemData['created']);
+
+            $itemData['minutesPassed'] = floor(((new \DateTime())->getTimestamp() - $itemData['created']->getTimestamp()) / 60);
+
+            $itemData['translated'] = $config['status'][$status]['warehouse'];
+
+            if ($status === 'new' && $itemData['minutesPassed'] > $timeoutMinutes) {
+                $itemData['stuck'] = true;
+                $itemData['alert'] = !in_array($itemData['uuid'], $previousReadyUuids);
+            }
+
+            $data[] = $itemData;
+        }
+    }
+
+    usort($data, function ($a, $b) {
+        if ($a['statusWeight'] < $b['statusWeight']) {
+            return -1;
+        }
+        if ($a['statusWeight'] > $b['statusWeight']) {
+            return 1;
+        }
+        if ($a['updated'] < $b['updated']) {
+            return -1;
+        }
+        if ($a['updated'] > $b['updated']) {
+            return 1;
+        }
+
+        return 0;
+    });
+
+
+
+    $mainQueueSize = $warehouse['mainQueueSize'] ?? 7;
+    $mainQueue = array_slice($data, 0, $mainQueueSize);
+    $extraQueue = array_slice($data, $mainQueueSize);
+
+    return $this->view->render($response, 'warehouse.twig', [
+        'queue' => $data,
+        'config' => $config,
+        'warehouse' => $warehouse,
+        'view' => $view,
+        'mainQueue' => $mainQueue,
+        'extraQueue' => $extraQueue,
+    ]);
+})->setName('warehouse');
+
+
 
 $app->post(
     '/warehouse/{warehouseUuid}/{status:new|assemblyInProgress|readyForPickup|handedOver|reset}/{itemUuid}[/{caption}]',
@@ -141,8 +278,22 @@ $app->post(
             $caption = trim($parsedRequest['caption']);
         }
 
-        if (!$caption && $status == 'new') {
-            $errors[] = 'parameter caption non-null value expected for status=new';
+        // check if warehouse with this id exists
+        $itemDataPath = sprintf(
+            '%s/%s/%s.json',
+            $this->get('settings')['dataDirPath'],
+            $warehouseUuid,
+            $itemUuid
+        );
+        $existingFileFound = file_exists($itemDataPath);
+        if ($existingFileFound) {
+            $data = json_decode(file_get_contents($itemDataPath), JSON_OBJECT_AS_ARRAY|JSON_UNESCAPED_UNICODE);
+        } else {
+            $data = [];
+        }
+
+        if (!$caption && !isset($data['caption']) && !$data['caption']) {
+            $errors[] = 'parameter caption non-null value expected while creating new item';
         }
 
         $warehouse = [];
@@ -156,24 +307,20 @@ $app->post(
         }
 
         if ($errors) {
-            return $response->withJson(['errors' => $errors], 409);
+            return $response->withJson(['errors' => $errors], 409, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
         }
 
-        // check if warehouse with this id exists
-        $itemDataPath = sprintf(
-            '%s/%s/%s.json',
-            $this->get('settings')['dataDirPath'],
-            $warehouseUuid,
-            $itemUuid
-        );
+
 
         $referer = $request->getHeader('HTTP_REFERER');
         if ($referer && is_array($referer)) {
             $referer = reset($referer);
         }
 
-        if ('reset' === $status && file_exists($itemDataPath)) {
-            unlink($itemDataPath);
+        if ('reset' === $status) {
+            if (file_exists($itemDataPath)) {
+                unlink($itemDataPath);
+            }
 
             if ($referer) {
                 return $response->withRedirect($referer);
@@ -182,12 +329,7 @@ $app->post(
             return $response->withStatus(204);
         }
 
-        $existingFileFound = file_exists($itemDataPath);
-        if ($existingFileFound) {
-            $data = json_decode(file_get_contents($itemDataPath), JSON_OBJECT_AS_ARRAY|JSON_UNESCAPED_UNICODE);
-        } else {
-            $data = [];
-        }
+
 
         $data['uuid'] = $itemUuid;
         $data['status'] = $status;
@@ -223,7 +365,7 @@ $app->post(
 
 
 
-$app->get('/queue/{uuid}/manage', function (Request $request, Response $response, array $args) {
+$app->get('/manage/{uuid}', function (Request $request, Response $response, array $args) {
     $warehouseUuid = $args['uuid'];
 
     // get config of warehouses
