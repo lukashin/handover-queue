@@ -63,8 +63,13 @@ $app->any('/queue/{uuid}[/{view}]', function (Request $request, Response $respon
         if ($itemData && isset($itemData['status']) && isset($itemData['status'])) {
             // check datetime
             $status = $itemData['status'];
+            $itemData['updated'] = $updated = new \DateTime($itemData['updated']);
+
+            if ($status === 'handedOver' && ($updated < new \DateTime('-30 second'))) {
+                continue;
+            }
+
             $itemData['statusWeight'] = $statusWeight[$status];
-            $itemData['updated'] = new \DateTime($itemData['updated']);
             $itemData['translated'] = $config['status'][$status]['queue'];
 
             if ($status === 'readyForPickup') {
@@ -109,7 +114,7 @@ $app->any('/queue/{uuid}[/{view}]', function (Request $request, Response $respon
 
     // when there is more, than allowed orders ready for pickup - "hide" rest, let people wait in queue
     foreach ($data as $idx => $item) {
-        if ($idx >= $maxReadyForPickup && ('readyForPickup' == $item['readyForPickup'])) {
+        if ($idx >= $maxReadyForPickup && ('readyForPickup' == $item['status'])) {
             $status = 'assemblyInProgress';
             $data[$idx]['status'] = $status;
             $data[$idx]['alert'] = false;
@@ -183,8 +188,13 @@ $app->any('/warehouse/{uuid}[/{view}]', function (Request $request, Response $re
                 continue;
             }
 
+            $itemData['updated'] = $updated = new \DateTime($itemData['updated']);
+
+            if ($status === 'handedOver' && ($updated < new \DateTime('-30 second'))) {
+                continue;
+            }
+
             $itemData['statusWeight'] = $statusWeight[$itemData['status']];
-            $itemData['updated'] = new \DateTime($itemData['updated']);
             $itemData['created'] = new \DateTime($itemData['created']);
 
             $itemData['minutesPassed'] = floor(((new \DateTime())->getTimestamp() - $itemData['created']->getTimestamp()) / 60);
@@ -368,6 +378,17 @@ $app->post(
 $app->get('/manage/{uuid}', function (Request $request, Response $response, array $args) {
     $warehouseUuid = $args['uuid'];
 
+    if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])
+        && $_SERVER['PHP_AUTH_USER'] === 'eq'
+        && $_SERVER['PHP_AUTH_PW'] === 'youshallnotpass'
+    ) {
+        // go further
+    } else {
+        header('WWW-Authenticate: Basic realm="EQ login"');
+        exit;
+    }
+
+
     // get config of warehouses
 
     $statusWeight = [
@@ -392,8 +413,12 @@ $app->get('/manage/{uuid}', function (Request $request, Response $response, arra
             // check datetime
             $status = $itemData['status'];
             $itemData['statusWeight'] = $statusWeight[$itemData['status']];
-            $itemData['updated'] = new \DateTime($itemData['updated']);
+            $itemData['updated'] = $updated = new \DateTime($itemData['updated']);
             $itemData['translated'] = $config['status'][$status]['queue'];
+
+            if ($status === 'handedOver' && ($updated < new \DateTime('-30 minute'))) {
+                continue;
+            }
 
             $data[] = $itemData;
         }

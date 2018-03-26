@@ -62,7 +62,7 @@
     "handedOver": {
       "warehouse": "Выдан",
       "queue": "Выдан",
-      "hideTimeout": 300
+      "hideTimeout": 30
     }
   }
 }
